@@ -8,8 +8,9 @@ EXTERN(RESET_VECTOR);
 
 SECTIONS {
     .vector_table ORIGIN(FLASH) : {
-        LONG(ORIGIN(RAM) + LENGTH(RAM));        /* スタックポインタ */
-        KEEP(*(.vector_table.reset_vector));    /* リセットベクタ   */
+        LONG(ORIGIN(RAM) + LENGTH(RAM));     /* スタックポインタ   */
+        KEEP(*(.vector_table.reset_vector)); /* リセットベクタ     */
+        KEEP(*(.vector_table.exceptions));   /* 例外ベクタテーブル */
     } > FLASH
 
     .text : {
@@ -19,6 +20,20 @@ SECTIONS {
     .rodata : {
         *(.rodata .rodata.*);
     } > FLASH
+
+    .bss (NOLOAD): {
+        _sbss = .;
+        *(.bss .bss.*);
+        _ebss = .;
+    } > RAM
+
+    .data : AT(ADDR(.rodata) + SIZEOF(.rodata)) {
+        _sdata = .;
+        *(.data .data.*);
+        _edata = .;
+    } > RAM
+    
+    _sidata = LOADADDR(.data);
 
     /DISCARD/ : {
         *(ARM.exidx .ARM.exidx.*);
