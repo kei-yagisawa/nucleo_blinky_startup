@@ -1,0 +1,8 @@
+[target.thumbv7em-none-eabihf]
+rustflags = [
+	"-C", "link-arg=-Tlinker.ld",
+	"-C", "link-arg=-Map=nucleo_blinky.map"
+]
+
+[build]
+target = "thumbv7em-none-eabihf"
