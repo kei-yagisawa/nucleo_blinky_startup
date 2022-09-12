@@ -4,13 +4,12 @@ MEMORY {
 }
 
 ENTRY(Reset);
-EXTERN(RESET_VECTOR);
+EXTERN(VECTORS);
 
 SECTIONS {
     .vector_table ORIGIN(FLASH) : {
-        LONG(ORIGIN(RAM) + LENGTH(RAM));     /* スタックポインタ   */
-        KEEP(*(.vector_table.reset_vector)); /* リセットベクタ     */
-        KEEP(*(.vector_table.exceptions));   /* 例外ベクタテーブル */
+        LONG(ORIGIN(RAM) + LENGTH(RAM)); /* スタックポインタ */
+        KEEP(*(.vector_table.vectors));  /* ベクタテーブル   */
     } > FLASH
 
     .text : {

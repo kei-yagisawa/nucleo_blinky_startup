@@ -5,13 +5,10 @@ use core::ptr::{copy_nonoverlapping, read_volatile, write_bytes, write_volatile}
 
 extern crate panic_halt;
 
-#[link_section = ".vector_table.reset_vector"]
+#[link_section = ".vector_table.vectors"]
 #[no_mangle]
-static RESET_VECTOR: unsafe extern "C" fn() -> ! = Reset;
-
-#[link_section = ".vector_table.exceptions"]
-#[no_mangle]
-static EXCEPTIONS: [Option<unsafe extern "C" fn()>; 14] = [
+static VECTORS: [Option<unsafe extern "C" fn()>; 15] = [
+    Some(Reset),
     Some(DefaultExceptionHandler),
     Some(DefaultExceptionHandler),
     Some(DefaultExceptionHandler),
@@ -34,7 +31,7 @@ extern "C" fn DefaultExceptionHandler() {
 }
 
 #[no_mangle]
-unsafe extern "C" fn Reset() -> ! {
+unsafe extern "C" fn Reset() {
     extern "C" {
         static mut _sbss  : u8;
         static     _ebss  : u8;
@@ -44,12 +41,12 @@ unsafe extern "C" fn Reset() -> ! {
     }
 
     // 初期値なし変数の初期化
-    let count = ((&_ebss as *const u8) as usize) - ((&_sbss as *const u8) as usize);
-    write_bytes(&mut _sbss as *mut u8, 0, count);
+    let count = (&_ebss as *const u8).offset_from(&_sbss as *const u8) as usize;
+    write_bytes(&mut _sbss, 0, count);
 
     // 初期値付き変数の初期化
-    let count = ((&_edata as *const u8) as usize) - ((&_sdata as *const u8) as usize);
-    copy_nonoverlapping(&_sidata as *const u8, &mut _sdata as *mut u8, count);
+    let count = (&_edata as *const u8).offset_from(&_sdata as *const u8) as usize;
+    copy_nonoverlapping(&_sidata as *const u8, &mut _sdata, count);
 
     init_gpio();
     init_systick();
