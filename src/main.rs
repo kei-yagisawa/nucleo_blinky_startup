@@ -1,58 +1,21 @@
-#![no_main]
 #![no_std]
+#![no_main]
 
-extern crate panic_halt;
-
-mod reg;
-mod systick;
-
-use core::ptr::{copy_nonoverlapping, write_bytes};
-
-#[link_section = ".vector_table.vectors"]
-#[no_mangle]
-static VECTORS: [Option<unsafe extern "C" fn()>; 15] = [
-    Some(Reset),
-    Some(DefaultExceptionHandler),
-    Some(DefaultExceptionHandler),
-    Some(DefaultExceptionHandler),
-    Some(DefaultExceptionHandler),
-    Some(DefaultExceptionHandler),
-    None,
-    None,
-    None,
-    None,
-    Some(DefaultExceptionHandler),
-    None,
-    None,
-    Some(DefaultExceptionHandler),
-    Some(systick::SysTick),
-];
+use nucleo_blinky_startup::reg;
+use nucleo_blinky_startup::systick;
 
 #[no_mangle]
-extern "C" fn DefaultExceptionHandler() {
-    loop {}
-}
-
-#[no_mangle]
-unsafe extern "C" fn Reset() {
-    extern "C" {
-        static mut _sbss  : u8;
-        static     _ebss  : u8;
-        static     _sidata: u8;
-        static mut _sdata : u8;
-        static     _edata : u8;
-    }
-
-    // 初期値なし変数の初期化
-    let count = (&_ebss as *const u8).offset_from(&_sbss as *const u8) as usize;
-    write_bytes(&mut _sbss, 0, count);
-
-    // 初期値付き変数の初期化
-    let count = (&_edata as *const u8).offset_from(&_sdata as *const u8) as usize;
-    copy_nonoverlapping(&_sidata as *const u8, &mut _sdata, count);
-
+pub fn main() -> ! {
     init_gpio();
-    systick::init();
+    systick::init(|| {
+        static mut ON_OFF: bool = false;
+    
+        let gpioa_odr = 0x4002_0014 as *mut usize;
+        unsafe {
+            ON_OFF = !ON_OFF;
+            reg::set_bit(gpioa_odr, 5, ON_OFF);
+        }
+    });
 
     loop {}
 }
