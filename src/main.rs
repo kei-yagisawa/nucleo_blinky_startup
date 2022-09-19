@@ -1,9 +1,12 @@
 #![no_main]
 #![no_std]
 
-use core::ptr::{copy_nonoverlapping, read_volatile, write_bytes, write_volatile};
-
 extern crate panic_halt;
+
+mod reg;
+mod systick;
+
+use core::ptr::{copy_nonoverlapping, write_bytes};
 
 #[link_section = ".vector_table.vectors"]
 #[no_mangle]
@@ -22,7 +25,7 @@ static VECTORS: [Option<unsafe extern "C" fn()>; 15] = [
     None,
     None,
     Some(DefaultExceptionHandler),
-    Some(SysTick),
+    Some(systick::SysTick),
 ];
 
 #[no_mangle]
@@ -49,48 +52,15 @@ unsafe extern "C" fn Reset() {
     copy_nonoverlapping(&_sidata as *const u8, &mut _sdata, count);
 
     init_gpio();
-    init_systick();
+    systick::init();
 
     loop {}
-}
-
-#[no_mangle]
-extern "C" fn SysTick() {
-    static mut ON_OFF: bool = false;
-
-    let gpioa_odr = 0x4002_0014 as *mut usize;
-    unsafe {
-        ON_OFF = !ON_OFF;
-        set_bit(gpioa_odr, 5, ON_OFF);
-    }
 }
 
 fn init_gpio() {
     let rcc_ahb1enr = 0x4002_3830 as *mut usize;
     let gpioa_moder = 0x4002_0000 as *mut usize;
 
-    set_bit(rcc_ahb1enr, 0, true);
-    set_bit(gpioa_moder, 10, true);
-}
-
-fn init_systick() {
-    let stk_ctrl_addr = 0xE000_E010 as *mut usize;
-    let stk_load_addr = 0xE000_E014 as *mut usize;
-    let stk_val_addr  = 0xE000_E018 as *mut usize;
-
-    unsafe {
-        write_volatile(stk_val_addr, 0);
-        write_volatile(stk_load_addr, 1_000_000);
-        write_volatile(stk_ctrl_addr, 0x3);
-    }
-}
-
-fn set_bit(addr: *mut usize, bit: usize, is_set: bool) {
-    unsafe {
-        let val = read_volatile(addr);
-        match is_set {
-            true  => write_volatile(addr, val |  (1 << bit)),
-            false => write_volatile(addr, val & !(1 << bit))
-        }
-    }
+    reg::set_bit(rcc_ahb1enr,  0, true);
+    reg::set_bit(gpioa_moder, 10, true);
 }
