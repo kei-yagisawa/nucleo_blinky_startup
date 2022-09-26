@@ -8,28 +8,25 @@ struct SysTickReg {
     pub calib: RO<u32>,
 }
 
-pub struct SysTick {
-    reg: &'static mut SysTickReg,
+pub struct Enabled;
+pub struct Disabled;
+
+#[allow(dead_code)]
+pub struct SysTick<EN> {
+    reg    : &'static mut SysTickReg,
+    enabled: EN,
 }
 
-impl SysTick {
-    pub fn new() -> SysTick {
-        SysTick {
-            reg: unsafe { &mut *(0xE000_E010 as *mut SysTickReg) },
-        }
-    }
-
-    pub fn start(&mut self) {
+impl SysTick<Disabled> {
+    pub fn start(self) -> SysTick<Enabled> {
         unsafe {
             let csr = self.reg.csr.read();
             self.reg.csr.write(csr | 0x1);
         }
-    }
 
-    pub fn stop(&mut self) {
-        unsafe {
-            let csr = self.reg.csr.read();
-            self.reg.csr.write(csr & !0x1);
+        SysTick {
+            reg    : self.reg,
+            enabled: Enabled
         }
     }
 
@@ -61,6 +58,28 @@ impl SysTick {
         }
     }
 }
+
+impl SysTick<Enabled> {
+    pub fn stop(self) -> SysTick<Disabled> {
+        unsafe {
+            let csr = self.reg.csr.read();
+            self.reg.csr.write(csr & !0x1);
+        }
+
+        SysTick {
+            reg    : self.reg,
+            enabled: Disabled
+        }
+    }
+}
+
+pub fn take() -> SysTick<Disabled> {
+    SysTick {
+        reg    : unsafe { &mut *(0xE000_E010 as *mut SysTickReg) },
+        enabled: Disabled
+    }
+}
+
 
 static mut CB: Option<fn()> = None;
 

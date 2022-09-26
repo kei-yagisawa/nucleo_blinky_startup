@@ -8,7 +8,7 @@ use nucleo_blinky_startup::systick;
 pub fn main() -> ! {
     led::init();
 
-    let mut st = systick::SysTick::new();
+    let mut st = systick::take();
     st.set_current(0);
     st.set_reload(1_000_000);
     st.set_interrupt(Some(|| {
@@ -19,7 +19,10 @@ pub fn main() -> ! {
             led::set(ON_OFF);
         }
     }));
-    st.start();
+
+    let _ = st.start();
+//    let st = st.start();
+//    st.stop();
 
     loop {}
 }
